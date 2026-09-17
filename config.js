@@ -23,6 +23,6 @@ window.JOB_HUNTER_CONFIG = {
      *
      * Do NOT add a trailing slash.
      */
-    API_BASE: "https://jobseekers.kirkjlemon.workers.dev/"
+    API_BASE: "https://jobseekers.kirkjlemon.workers.dev"
 
 };
