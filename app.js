@@ -1,61 +1,210 @@
 "use strict";
 
-/*
- * Job Hunter
- * frontend/app.js
- *
- * Matches the existing index.html and Cloudflare Worker API.
- */
-
 const $ = selector => document.querySelector(selector);
 
-const jobsEl = $("#jobs");
-const statusEl = $("#status");
-const errorEl = $("#error");
-const searchForm = $("#searchForm");
-const searchButton = $("#searchBtn");
-const sortSelect = $("#sort");
+const API_BASE = (
+    window.JOB_HUNTER_CONFIG?.API_BASE || ""
+)
+    .trim()
+    .replace(/\/+$/, "");
 
-let current = [];
+let currentJobs = [];
+let currentProfile = null;
+let cvMatchMode = false;
 
 
 // ============================================================
-// SAFE OUTPUT HELPERS
+// SKILL KNOWLEDGE BASE
 // ============================================================
 
-const esc = value =>
-    String(value ?? "").replace(
+const SKILLS = [
+    "Azure",
+    "AWS",
+    "Google Cloud",
+    "Intune",
+    "Entra ID",
+    "Active Directory",
+    "Microsoft 365",
+    "Office 365",
+    "Defender",
+    "Microsoft Defender",
+    "Conditional Access",
+    "Autopilot",
+    "PowerShell",
+    "Terraform",
+    "Kubernetes",
+    "Docker",
+    "Linux",
+    "Windows Server",
+    "Windows 11",
+    "Exchange Online",
+    "SharePoint",
+    "Teams",
+    "Purview",
+    "Sentinel",
+    "SIEM",
+    "SOC",
+    "DevOps",
+    "Azure DevOps",
+    "GitHub",
+    "Git",
+    "Python",
+    "JavaScript",
+    "TypeScript",
+    "React",
+    "Angular",
+    "Vue",
+    "Node.js",
+    "C#",
+    ".NET",
+    "Java",
+    "PHP",
+    "Laravel",
+    "SQL",
+    "MySQL",
+    "PostgreSQL",
+    "SQL Server",
+    "MongoDB",
+    "Redis",
+    "REST",
+    "REST API",
+    "GraphQL",
+    "API",
+    "CI/CD",
+    "Jenkins",
+    "Ansible",
+    "VMware",
+    "Hyper-V",
+    "Citrix",
+    "ServiceNow",
+    "Jira",
+    "Confluence",
+    "Cisco",
+    "Networking",
+    "TCP/IP",
+    "DNS",
+    "DHCP",
+    "VPN",
+    "Firewall",
+    "Cyber Security",
+    "Cybersecurity",
+    "ISO 27001",
+    "Cyber Essentials",
+    "OWASP",
+    "SaaS",
+    "PaaS",
+    "IaaS",
+    "RBAC",
+    "SSO",
+    "MFA",
+    "OAuth",
+    "SAML",
+    "Zero Trust",
+    "MDM",
+    "MAM",
+    "Endpoint Management",
+    "Identity Management",
+    "IAM",
+    "Application Insights",
+    "Log Analytics",
+    "Azure Monitor",
+    "Cloudflare",
+    "D1",
+    "Workers"
+];
+
+
+// ============================================================
+// CERTIFICATION PATTERNS
+// ============================================================
+
+const CERT_PATTERNS = [
+    /\bAZ-\d{3}\b/gi,
+    /\bMS-\d{3}\b/gi,
+    /\bMD-\d{3}\b/gi,
+    /\bSC-\d{3}\b/gi,
+    /\bAI-\d{3}\b/gi,
+    /\bDP-\d{3}\b/gi,
+    /\bPL-\d{3}\b/gi,
+    /\bCCNA\b/gi,
+    /\bCCNP\b/gi,
+    /\bCISSP\b/gi,
+    /\bCISM\b/gi,
+    /\bCISA\b/gi,
+    /\bCompTIA\s+(?:A\+|Network\+|Security\+|CySA\+)\b/gi,
+    /\bITIL(?:\s+\w+)?\b/gi
+];
+
+
+// ============================================================
+// GENERIC ROLE PATTERNS
+// ============================================================
+
+const ROLE_PATTERNS = [
+    /(?:senior\s+)?cloud\s+engineer/gi,
+    /(?:senior\s+)?azure\s+engineer/gi,
+    /(?:senior\s+)?devops\s+engineer/gi,
+    /(?:senior\s+)?software\s+engineer/gi,
+    /(?:senior\s+)?software\s+developer/gi,
+    /(?:senior\s+)?systems?\s+administrator/gi,
+    /(?:senior\s+)?systems?\s+engineer/gi,
+    /(?:senior\s+)?network\s+engineer/gi,
+    /(?:senior\s+)?security\s+engineer/gi,
+    /(?:senior\s+)?endpoint\s+engineer/gi,
+    /(?:senior\s+)?support\s+engineer/gi,
+    /(?:senior\s+)?technical\s+support/gi,
+    /(?:senior\s+)?application\s+support/gi,
+    /(?:senior\s+)?platform\s+engineer/gi,
+    /(?:senior\s+)?infrastructure\s+engineer/gi,
+    /(?:senior\s+)?data\s+engineer/gi,
+    /(?:senior\s+)?data\s+analyst/gi,
+    /(?:senior\s+)?business\s+analyst/gi,
+    /(?:senior\s+)?project\s+manager/gi,
+    /(?:senior\s+)?product\s+manager/gi,
+    /(?:senior\s+)?account\s+manager/gi,
+    /(?:senior\s+)?sales\s+manager/gi,
+    /(?:senior\s+)?marketing\s+manager/gi,
+    /(?:senior\s+)?finance\s+manager/gi,
+    /(?:senior\s+)?operations\s+manager/gi,
+    /(?:senior\s+)?qa\s+engineer/gi,
+    /(?:senior\s+)?test\s+engineer/gi
+];
+
+
+// ============================================================
+// HELPERS
+// ============================================================
+
+function esc(value) {
+    return String(value ?? "").replace(
         /[&<>"']/g,
-        character => ({
+        c => ({
             "&": "&amp;",
             "<": "&lt;",
             ">": "&gt;",
             '"': "&quot;",
             "'": "&#39;"
-        })[character]
+        })[c]
     );
+}
 
 
-const money = value => {
+function unique(values) {
+    return [...new Set(
+        values
+            .map(v => String(v).trim())
+            .filter(Boolean)
+    )];
+}
 
-    const number = Number(value);
 
-    if (
-        !Number.isFinite(number) ||
-        number <= 0
-    ) {
-        return null;
-    }
-
-    return new Intl.NumberFormat(
-        "en-GB",
-        {
-            style: "currency",
-            currency: "GBP",
-            maximumFractionDigits: 0
-        }
-    ).format(number);
-};
+function splitList(value) {
+    return unique(
+        String(value || "")
+            .split(/[,;\n]/)
+            .map(v => v.trim())
+    );
+}
 
 
 function safeUrl(value) {
@@ -74,15 +223,54 @@ function safeUrl(value) {
         return url.href;
 
     } catch {
-
         return "#";
     }
 }
 
 
-// ============================================================
-// DATE DISPLAY
-// ============================================================
+function money(value) {
+
+    const number = Number(value);
+
+    if (!Number.isFinite(number) || number <= 0) {
+        return null;
+    }
+
+    return new Intl.NumberFormat(
+        "en-GB",
+        {
+            style: "currency",
+            currency: "GBP",
+            maximumFractionDigits: 0
+        }
+    ).format(number);
+}
+
+
+function formatSalary(job) {
+
+    const min = money(job.salaryMin);
+    const max = money(job.salaryMax);
+
+    if (min && max) {
+
+        if (
+            Number(job.salaryMin) ===
+            Number(job.salaryMax)
+        ) {
+            return min;
+        }
+
+        return `${min} – ${max}`;
+    }
+
+    if (min) return `From ${min}`;
+
+    if (max) return `Up to ${max}`;
+
+    return job.salary || "Salary not listed";
+}
+
 
 function formatDate(value) {
 
@@ -92,12 +280,8 @@ function formatDate(value) {
 
     const date = new Date(value);
 
-    if (
-        Number.isNaN(
-            date.getTime()
-        )
-    ) {
-        return value;
+    if (Number.isNaN(date.getTime())) {
+        return String(value);
     }
 
     return date.toLocaleDateString(
@@ -111,320 +295,1194 @@ function formatDate(value) {
 }
 
 
-// ============================================================
-// SALARY DISPLAY
-// ============================================================
+function normalise(value) {
 
-function formatSalary(job) {
-
-    const minimum =
-        money(job.salaryMin);
-
-    const maximum =
-        money(job.salaryMax);
-
-    if (
-        minimum &&
-        maximum
-    ) {
-
-        if (
-            Number(job.salaryMin) ===
-            Number(job.salaryMax)
-        ) {
-            return minimum;
-        }
-
-        return `${minimum} – ${maximum}`;
-    }
-
-    if (minimum) {
-        return `From ${minimum}`;
-    }
-
-    if (maximum) {
-        return `Up to ${maximum}`;
-    }
-
-    if (job.salary) {
-        return String(job.salary);
-    }
-
-    return "Salary not listed";
+    return String(value || "")
+        .toLowerCase()
+        .replace(/&amp;/g, "and")
+        .replace(/[^a-z0-9+#.\s-]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
 }
 
 
 // ============================================================
-// RENDER RESULTS
+// MODE SWITCHING
 // ============================================================
 
-function render() {
+$("#searchModeBtn").addEventListener(
+    "click",
+    () => setMode("search")
+);
 
-    const sort =
-        sortSelect.value;
+$("#cvModeBtn").addEventListener(
+    "click",
+    () => setMode("cv")
+);
 
-    const list =
-        [...current];
 
-    if (
-        sort === "salary"
-    ) {
+function setMode(mode) {
 
-        list.sort(
-            (a, b) =>
-                (
-                    Number(b.salaryMax) ||
-                    Number(b.salaryMin) ||
-                    0
-                ) -
-                (
-                    Number(a.salaryMax) ||
-                    Number(a.salaryMin) ||
-                    0
-                )
-        );
+    const cv = mode === "cv";
 
-    } else if (
-        sort === "title"
-    ) {
+    $("#searchMode").hidden = cv;
+    $("#cvMode").hidden = !cv;
 
-        list.sort(
-            (a, b) =>
-                String(
-                    a.title || ""
-                ).localeCompare(
-                    String(
-                        b.title || ""
-                    ),
-                    "en-GB"
-                )
-        );
+    $("#searchModeBtn").classList.toggle(
+        "active",
+        !cv
+    );
 
-    } else {
+    $("#cvModeBtn").classList.toggle(
+        "active",
+        cv
+    );
 
-        list.sort(
-            (a, b) => {
+    cvMatchMode = cv;
 
-                const dateA =
-                    new Date(
-                        a.postedAt || 0
-                    ).getTime();
+    $("#sort").querySelector(
+        'option[value="match"]'
+    ).hidden = !cv;
 
-                const dateB =
-                    new Date(
-                        b.postedAt || 0
-                    ).getTime();
+    if (!cv && $("#sort").value === "match") {
+        $("#sort").value = "newest";
+    }
+}
 
-                return (
-                    (
-                        Number.isNaN(dateB)
-                            ? 0
-                            : dateB
-                    ) -
-                    (
-                        Number.isNaN(dateA)
-                            ? 0
-                            : dateA
-                    )
+
+// ============================================================
+// CV PANEL NAVIGATION
+// ============================================================
+
+function showCvPanel(panel) {
+
+    [
+        "#cvStart",
+        "#uploadPanel",
+        "#virtualPanel",
+        "#profilePanel"
+    ].forEach(
+        selector => {
+            $(selector).hidden = true;
+        }
+    );
+
+    $(panel).hidden = false;
+}
+
+
+$("#uploadChoice").addEventListener(
+    "click",
+    () => showCvPanel("#uploadPanel")
+);
+
+$("#virtualChoice").addEventListener(
+    "click",
+    () => showCvPanel("#virtualPanel")
+);
+
+$("#uploadBack").addEventListener(
+    "click",
+    () => showCvPanel("#cvStart")
+);
+
+$("#virtualBack").addEventListener(
+    "click",
+    () => showCvPanel("#cvStart")
+);
+
+$("#restartCvBtn").addEventListener(
+    "click",
+    () => {
+
+        currentProfile = null;
+
+        $("#cvFile").value = "";
+
+        showCvPanel("#cvStart");
+    }
+);
+
+
+// ============================================================
+// CV FILE UPLOAD
+// ============================================================
+
+$("#cvFile").addEventListener(
+    "change",
+    async event => {
+
+        const file = event.target.files?.[0];
+
+        if (!file) return;
+
+        await processCvFile(file);
+    }
+);
+
+
+const dropZone = $("#dropZone");
+
+
+["dragenter", "dragover"].forEach(
+    eventName => {
+
+        dropZone.addEventListener(
+            eventName,
+            event => {
+
+                event.preventDefault();
+
+                dropZone.classList.add(
+                    "dragging"
                 );
             }
         );
     }
+);
 
 
-    if (
-        list.length === 0
-    ) {
+["dragleave", "drop"].forEach(
+    eventName => {
 
-        jobsEl.innerHTML = `
-            <div class="empty">
-                No jobs matched this search.
-            </div>
-        `;
+        dropZone.addEventListener(
+            eventName,
+            event => {
+
+                event.preventDefault();
+
+                dropZone.classList.remove(
+                    "dragging"
+                );
+            }
+        );
+    }
+);
+
+
+dropZone.addEventListener(
+    "drop",
+    async event => {
+
+        const file =
+            event.dataTransfer.files?.[0];
+
+        if (!file) return;
+
+        await processCvFile(file);
+    }
+);
+
+
+async function processCvFile(file) {
+
+    clearError();
+
+    const maxBytes =
+        5 * 1024 * 1024;
+
+    if (file.size > maxBytes) {
+
+        showError(
+            "CV must be 5 MB or smaller."
+        );
 
         return;
     }
 
 
-    jobsEl.innerHTML =
-        list.map(job => {
+    const extension =
+        file.name
+            .split(".")
+            .pop()
+            ?.toLowerCase();
 
-            const salary =
-                formatSalary(job);
 
-            const date =
-                formatDate(
-                    job.postedAt
-                );
+    if (
+        extension !== "pdf" &&
+        extension !== "docx"
+    ) {
 
-            /*
-             * IMPORTANT:
-             * Worker returns "provider",
-             * not "source".
-             */
+        showError(
+            "Please upload a PDF or DOCX file."
+        );
 
-            const provider =
-                job.provider ||
-                job.source ||
-                "Job board";
+        return;
+    }
 
-            const description =
-                String(
-                    job.description || ""
-                );
 
-            const shortDescription =
-                description.length > 320
-                    ? `${description.slice(0, 320)}…`
-                    : description;
+    $("#cvProcessing").hidden = false;
 
-            const url =
-                safeUrl(
-                    job.url
-                );
 
-            return `
-                <article class="job">
+    try {
 
-                    <div class="jobTop">
+        let text = "";
 
-                        <div>
+        if (extension === "pdf") {
+            text = await extractPdf(file);
+        }
 
-                            <h3>
-                                ${esc(
-                                    job.title ||
-                                    "Untitled job"
-                                )}
-                            </h3>
+        if (extension === "docx") {
+            text = await extractDocx(file);
+        }
 
-                            <p class="company">
-                                ${esc(
-                                    job.company ||
-                                    "Company not listed"
-                                )}
-                            </p>
 
-                        </div>
+        if (
+            !text ||
+            text.trim().length < 80
+        ) {
 
-                        <a
-                            href="${esc(url)}"
-                            target="_blank"
-                            rel="noopener noreferrer nofollow"
-                        >
-                            View job →
-                        </a>
+            throw new Error(
+                "We couldn't extract enough text from this CV. If it is a scanned PDF, try a DOCX version or use the virtual CV."
+            );
+        }
 
-                    </div>
 
-                    <div class="meta">
+        currentProfile =
+            analyseCv(text);
 
-                        <span class="pill">
-                            ${esc(
-                                job.location ||
-                                "Location not listed"
-                            )}
-                        </span>
 
-                        <span class="pill">
-                            ${esc(salary)}
-                        </span>
+        populateProfile(
+            currentProfile
+        );
 
-                        <span class="pill">
-                            ${esc(date)}
-                        </span>
 
-                        <span class="pill source">
-                            ${esc(provider)}
-                        </span>
+        showCvPanel(
+            "#profilePanel"
+        );
 
-                        ${
-                            job.remote
-                                ? `
-                                    <span class="pill">
-                                        Remote
-                                    </span>
-                                `
-                                : ""
-                        }
 
-                        ${
-                            job.contractType
-                                ? `
-                                    <span class="pill">
-                                        ${esc(
-                                            job.contractType
-                                        )}
-                                    </span>
-                                `
-                                : ""
-                        }
+    } catch (error) {
 
-                    </div>
+        console.error(error);
 
-                    ${
-                        shortDescription
-                            ? `
-                                <p class="desc">
-                                    ${esc(
-                                        shortDescription
-                                    )}
-                                </p>
-                            `
-                            : ""
-                    }
+        showError(
+            error.message ||
+            "Unable to analyse this CV."
+        );
 
-                </article>
-            `;
+    } finally {
 
-        }).join("");
+        $("#cvProcessing").hidden = true;
+    }
 }
 
 
 // ============================================================
-// SORT
+// PDF EXTRACTION
 // ============================================================
 
-sortSelect.addEventListener(
-    "change",
-    render
+async function extractPdf(file) {
+
+    const pdfjsLib =
+        await import(
+            "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs"
+        );
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
+
+
+    const buffer =
+        await file.arrayBuffer();
+
+
+    const pdf =
+        await pdfjsLib
+            .getDocument({
+                data: buffer
+            })
+            .promise;
+
+
+    const pages = [];
+
+
+    for (
+        let pageNumber = 1;
+        pageNumber <= pdf.numPages;
+        pageNumber++
+    ) {
+
+        const page =
+            await pdf.getPage(
+                pageNumber
+            );
+
+        const content =
+            await page.getTextContent();
+
+        pages.push(
+            content.items
+                .map(item => item.str)
+                .join(" ")
+        );
+    }
+
+
+    return pages.join("\n");
+}
+
+
+// ============================================================
+// DOCX EXTRACTION
+// ============================================================
+
+async function extractDocx(file) {
+
+    if (!window.mammoth) {
+
+        throw new Error(
+            "DOCX parser did not load. Refresh the page and try again."
+        );
+    }
+
+
+    const buffer =
+        await file.arrayBuffer();
+
+
+    const result =
+        await window.mammoth.extractRawText({
+            arrayBuffer: buffer
+        });
+
+
+    return result.value || "";
+}
+
+
+// ============================================================
+// CV ANALYSIS
+// ============================================================
+
+function analyseCv(text) {
+
+    const cleanText =
+        String(text)
+            .replace(/\s+/g, " ")
+            .trim();
+
+
+    const lower =
+        cleanText.toLowerCase();
+
+
+    const skills =
+        SKILLS.filter(
+            skill =>
+                lower.includes(
+                    skill.toLowerCase()
+                )
+        );
+
+
+    const certifications = [];
+
+    for (
+        const pattern of CERT_PATTERNS
+    ) {
+
+        const matches =
+            cleanText.match(pattern);
+
+        if (matches) {
+            certifications.push(
+                ...matches
+            );
+        }
+    }
+
+
+    const roles = [];
+
+    for (
+        const pattern of ROLE_PATTERNS
+    ) {
+
+        const matches =
+            cleanText.match(pattern);
+
+        if (matches) {
+            roles.push(
+                ...matches
+            );
+        }
+    }
+
+
+    const cleanedRoles =
+        unique(roles)
+            .map(title =>
+                title
+                    .replace(/\s+/g, " ")
+                    .trim()
+            );
+
+
+    const years =
+        estimateExperienceYears(
+            cleanText
+        );
+
+
+    const seniority =
+        inferSeniority(
+            cleanText,
+            cleanedRoles
+        );
+
+
+    let primaryRole =
+        cleanedRoles[0] || "";
+
+
+    if (!primaryRole) {
+
+        primaryRole =
+            inferRoleFromSkills(
+                skills
+            );
+    }
+
+
+    return {
+        primaryRole,
+        roles: cleanedRoles,
+        skills: unique(skills),
+        certifications:
+            unique(
+                certifications.map(
+                    cert =>
+                        cert.toUpperCase()
+                )
+            ),
+        years,
+        seniority
+    };
+}
+
+
+// ============================================================
+// EXPERIENCE ESTIMATION
+// ============================================================
+
+function estimateExperienceYears(text) {
+
+    const explicit =
+        [
+            ...text.matchAll(
+                /\b(\d{1,2})\+?\s+years?(?:\s+of)?\s+experience\b/gi
+            )
+        ]
+        .map(
+            match =>
+                Number(match[1])
+        )
+        .filter(
+            value =>
+                value >= 0 &&
+                value <= 60
+        );
+
+
+    if (explicit.length) {
+
+        return Math.max(
+            ...explicit
+        );
+    }
+
+
+    const years =
+        [
+            ...text.matchAll(
+                /\b(19\d{2}|20\d{2})\b/g
+            )
+        ]
+        .map(
+            match =>
+                Number(match[1])
+        )
+        .filter(
+            year =>
+                year >= 1980 &&
+                year <= new Date().getFullYear()
+        );
+
+
+    if (!years.length) {
+        return 0;
+    }
+
+
+    const earliest =
+        Math.min(...years);
+
+
+    return Math.min(
+        60,
+        Math.max(
+            0,
+            new Date().getFullYear() -
+            earliest
+        )
+    );
+}
+
+
+// ============================================================
+// SENIORITY
+// ============================================================
+
+function inferSeniority(
+    text,
+    roles
+) {
+
+    const value =
+        normalise(
+            `${roles.join(" ")} ${text}`
+        );
+
+
+    if (
+        /\b(head|director|manager)\b/.test(
+            value
+        )
+    ) {
+        return "manager";
+    }
+
+
+    if (
+        /\b(lead|principal|architect)\b/.test(
+            value
+        )
+    ) {
+        return "lead";
+    }
+
+
+    if (
+        /\bsenior\b/.test(
+            value
+        )
+    ) {
+        return "senior";
+    }
+
+
+    if (
+        /\b(junior|graduate|trainee|apprentice)\b/.test(
+            value
+        )
+    ) {
+        return "junior";
+    }
+
+
+    return "mid";
+}
+
+
+// ============================================================
+// ROLE INFERENCE
+// ============================================================
+
+function inferRoleFromSkills(skills) {
+
+    const set =
+        new Set(
+            skills.map(
+                skill =>
+                    skill.toLowerCase()
+            )
+        );
+
+
+    if (
+        set.has("intune") ||
+        set.has("autopilot") ||
+        set.has("endpoint management")
+    ) {
+        return "Endpoint Engineer";
+    }
+
+
+    if (
+        set.has("azure") &&
+        (
+            set.has("terraform") ||
+            set.has("devops") ||
+            set.has("docker")
+        )
+    ) {
+        return "Cloud Engineer";
+    }
+
+
+    if (
+        set.has("azure")
+    ) {
+        return "Azure Engineer";
+    }
+
+
+    if (
+        set.has("cyber security") ||
+        set.has("cybersecurity") ||
+        set.has("siem")
+    ) {
+        return "Security Engineer";
+    }
+
+
+    if (
+        set.has("react") ||
+        set.has("javascript") ||
+        set.has("typescript")
+    ) {
+        return "Software Developer";
+    }
+
+
+    return "IT Engineer";
+}
+
+
+// ============================================================
+// VIRTUAL CV
+// ============================================================
+
+$("#virtualForm").addEventListener(
+    "submit",
+    event => {
+
+        event.preventDefault();
+
+        currentProfile = {
+
+            primaryRole:
+                $("#virtualTitle")
+                    .value
+                    .trim(),
+
+            roles:
+                splitList(
+                    $("#virtualPreviousRoles")
+                        .value
+                ),
+
+            skills:
+                splitList(
+                    $("#virtualSkills")
+                        .value
+                ),
+
+            certifications:
+                splitList(
+                    $("#virtualCerts")
+                        .value
+                ),
+
+            years:
+                Number(
+                    $("#virtualYears")
+                        .value
+                ) || 0,
+
+            seniority:
+                $("#virtualSeniority")
+                    .value
+        };
+
+
+        populateProfile(
+            currentProfile
+        );
+
+
+        showCvPanel(
+            "#profilePanel"
+        );
+    }
 );
 
 
 // ============================================================
-// SEARCH
+// PROFILE EDITOR
 // ============================================================
 
-searchForm.addEventListener(
-    "submit",
-    async event => {
+function populateProfile(profile) {
 
-        event.preventDefault();
+    $("#profilePrimaryRole").value =
+        profile.primaryRole || "";
 
-        errorEl.hidden = true;
-        errorEl.textContent = "";
+    $("#profileRoles").value =
+        (profile.roles || []).join(", ");
+
+    $("#profileSkills").value =
+        (profile.skills || []).join(", ");
+
+    $("#profileCerts").value =
+        (profile.certifications || [])
+            .join(", ");
+
+    $("#profileYears").value =
+        profile.years || 0;
+
+    $("#profileSeniority").value =
+        profile.seniority || "mid";
+}
 
 
-        // ----------------------------------------------------
-        // SEARCH QUERY
-        // ----------------------------------------------------
+function readProfileEditor() {
 
-        const query =
-            $("#q").value.trim();
+    return {
 
-        if (!query) {
+        primaryRole:
+            $("#profilePrimaryRole")
+                .value
+                .trim(),
 
-            errorEl.textContent =
-                "Enter a job title, skill or keyword.";
+        roles:
+            splitList(
+                $("#profileRoles")
+                    .value
+            ),
 
-            errorEl.hidden = false;
+        skills:
+            splitList(
+                $("#profileSkills")
+                    .value
+            ),
+
+        certifications:
+            splitList(
+                $("#profileCerts")
+                    .value
+            ),
+
+        years:
+            Number(
+                $("#profileYears")
+                    .value
+            ) || 0,
+
+        seniority:
+            $("#profileSeniority")
+                .value
+    };
+}
+
+
+// ============================================================
+// GENERATE SEARCH QUERIES
+// ============================================================
+
+function generateSearchQueries(
+    profile
+) {
+
+    const queries = [];
+
+
+    if (profile.primaryRole) {
+
+        queries.push(
+            profile.primaryRole
+        );
+    }
+
+
+    for (
+        const role of profile.roles
+    ) {
+
+        if (queries.length >= 4) {
+            break;
+        }
+
+        queries.push(role);
+    }
+
+
+    /*
+     * If CV analysis only found one useful role,
+     * infer additional searches from major skills.
+     */
+
+    const skillText =
+        profile.skills
+            .map(
+                skill =>
+                    skill.toLowerCase()
+            );
+
+
+    if (
+        skillText.includes("intune")
+    ) {
+
+        queries.push(
+            "Intune Engineer",
+            "Endpoint Engineer"
+        );
+    }
+
+
+    if (
+        skillText.includes("azure")
+    ) {
+
+        queries.push(
+            "Azure Engineer",
+            "Cloud Engineer"
+        );
+    }
+
+
+    if (
+        skillText.includes("entra id") ||
+        skillText.includes(
+            "identity management"
+        )
+    ) {
+
+        queries.push(
+            "Identity Engineer"
+        );
+    }
+
+
+    if (
+        skillText.includes("devops") ||
+        skillText.includes("terraform")
+    ) {
+
+        queries.push(
+            "DevOps Engineer"
+        );
+    }
+
+
+    if (
+        skillText.includes("cybersecurity") ||
+        skillText.includes(
+            "cyber security"
+        )
+    ) {
+
+        queries.push(
+            "Security Engineer"
+        );
+    }
+
+
+    return unique(queries)
+        .slice(0, 5);
+}
+
+
+// ============================================================
+// FIND CV MATCHES
+// ============================================================
+
+$("#findMatchesBtn").addEventListener(
+    "click",
+    async () => {
+
+        clearError();
+
+
+        const profile =
+            readProfileEditor();
+
+
+        if (!profile.primaryRole) {
+
+            showError(
+                "Add a primary role before searching."
+            );
 
             return;
         }
 
 
-        // ----------------------------------------------------
-        // PROVIDERS
-        // ----------------------------------------------------
+        if (
+            profile.skills.length === 0
+        ) {
+
+            showError(
+                "Add at least one skill before searching."
+            );
+
+            return;
+        }
+
+
+        currentProfile =
+            profile;
+
+
+        const queries =
+            generateSearchQueries(
+                profile
+            );
+
+
+        const button =
+            $("#findMatchesBtn");
+
+
+        button.disabled = true;
+
+        button.textContent =
+            "Matching…";
+
+
+        $("#status").textContent =
+            `Searching ${queries.length} relevant role${queries.length === 1 ? "" : "s"}…`;
+
+
+        try {
+
+            const searches =
+                queries.map(
+                    query =>
+                        searchApi({
+                            query,
+                            location:
+                                $("#cvLocation")
+                                    .value
+                                    .trim(),
+
+                            salaryMin:
+                                $("#cvSalary")
+                                    .value
+                                    .trim(),
+
+                            days:
+                                $("#cvDays")
+                                    .value,
+
+                            limit: 20,
+
+                            providers: [
+                                "reed",
+                                "adzuna"
+                            ]
+                        })
+                );
+
+
+            const responses =
+                await Promise.all(
+                    searches
+                );
+
+
+            let jobs =
+                responses.flatMap(
+                    response =>
+                        response.jobs || []
+                );
+
+
+            jobs =
+                deduplicateJobs(
+                    jobs
+                );
+
+
+            jobs =
+                jobs.map(
+                    job => ({
+                        ...job,
+                        match:
+                            scoreJob(
+                                profile,
+                                job
+                            )
+                    })
+                );
+
+
+            jobs.sort(
+                (a, b) =>
+                    b.match.score -
+                    a.match.score
+            );
+
+
+            currentJobs =
+                jobs;
+
+
+            cvMatchMode = true;
+
+            $("#sort").value =
+                "match";
+
+
+            $("#status").textContent =
+                `${jobs.length} unique vacancies analysed against your CV.`;
+
+
+            renderJobs();
+
+
+            $("#resultsSection")
+                .scrollIntoView({
+                    behavior: "smooth"
+                });
+
+
+        } catch (error) {
+
+            console.error(error);
+
+            showError(
+                error.message ||
+                "Unable to match jobs."
+            );
+
+        } finally {
+
+            button.disabled = false;
+
+            button.textContent =
+                "Find my matches";
+        }
+    }
+);
+
+
+// ============================================================
+// API SEARCH
+// ============================================================
+
+async function searchApi({
+    query,
+    location = "",
+    salaryMin = "",
+    days = "",
+    limit = 20,
+    providers = ["reed", "adzuna"]
+}) {
+
+    if (!API_BASE) {
+
+        throw new Error(
+            "API_BASE is not configured."
+        );
+    }
+
+
+    const params =
+        new URLSearchParams();
+
+
+    params.set(
+        "q",
+        query
+    );
+
+    params.set(
+        "providers",
+        providers.join(",")
+    );
+
+    params.set(
+        "resultsPerSource",
+        String(limit)
+    );
+
+
+    if (location) {
+
+        params.set(
+            "location",
+            location
+        );
+    }
+
+
+    if (salaryMin) {
+
+        params.set(
+            "salaryMin",
+            salaryMin
+        );
+    }
+
+
+    if (days) {
+
+        params.set(
+            "postedWithin",
+            days
+        );
+    }
+
+
+    const response =
+        await fetch(
+            `${API_BASE}/api/jobs/search?${params.toString()}`,
+            {
+                headers: {
+                    Accept: "application/json"
+                }
+            }
+        );
+
+
+    const data =
+        await response.json();
+
+
+    if (!response.ok) {
+
+        throw new Error(
+            data.error ||
+            `Search failed (${response.status}).`
+        );
+    }
+
+
+    return data;
+}
+
+
+// ============================================================
+// NORMAL SEARCH
+// ============================================================
+
+$("#searchForm").addEventListener(
+    "submit",
+    async event => {
+
+        event.preventDefault();
+
+        clearError();
+
+
+        const query =
+            $("#q")
+                .value
+                .trim();
+
+
+        if (!query) {
+
+            showError(
+                "Enter a job title, skill or keyword."
+            );
+
+            return;
+        }
+
 
         const providers =
             [
@@ -432,341 +1490,37 @@ searchForm.addEventListener(
                     'input[name="source"]:checked'
                 )
             ]
-                .map(
-                    input => input.value
-                )
-                /*
-                 * Existing HTML currently uses
-                 * cvlib while Worker expects
-                 * cvlibrary.
-                 */
-                .map(
-                    provider =>
-                        provider === "cvlib"
-                            ? "cvlibrary"
-                            : provider
-                );
+            .map(
+                input =>
+                    input.value
+            );
 
 
-        if (
-            providers.length === 0
-        ) {
+        if (!providers.length) {
 
-            errorEl.textContent =
-                "Select at least one source.";
-
-            errorEl.hidden = false;
+            showError(
+                "Select at least one job source."
+            );
 
             return;
         }
 
 
-        // ----------------------------------------------------
-        // BUILD QUERY
-        // ----------------------------------------------------
-
-        const params =
-            new URLSearchParams();
-
-        params.set(
-            "q",
-            query
-        );
-
-        /*
-         * FIX:
-         *
-         * Worker expects:
-         * providers=
-         *
-         * NOT:
-         * sources=
-         */
-
-        params.set(
-            "providers",
-            providers.join(",")
-        );
+        const button =
+            $("#searchBtn");
 
 
-        /*
-         * FIX:
-         *
-         * Worker expects:
-         * resultsPerSource=
-         *
-         * NOT:
-         * limit=
-         */
+        button.disabled = true;
 
-        params.set(
-            "resultsPerSource",
-            $("#limit").value
-        );
-
-
-        const location =
-            $("#location").value.trim();
-
-        const salary =
-            $("#salaryMin").value.trim();
-
-        const days =
-            $("#days").value.trim();
-
-
-        if (location) {
-
-            params.set(
-                "location",
-                location
-            );
-        }
-
-
-        if (salary) {
-
-            params.set(
-                "salaryMin",
-                salary
-            );
-        }
-
-
-        /*
-         * FIX:
-         *
-         * Worker expects:
-         * postedWithin=
-         *
-         * NOT:
-         * days=
-         */
-
-        if (days) {
-
-            params.set(
-                "postedWithin",
-                days
-            );
-        }
-
-
-        // ----------------------------------------------------
-        // API BASE
-        // ----------------------------------------------------
-
-        const base =
-            (
-                window
-                    .JOB_HUNTER_CONFIG
-                    ?.API_BASE ||
-                ""
-            )
-                .trim()
-                .replace(
-                    /\/+$/,
-                    ""
-                );
-
-
-        if (
-            !base ||
-            base.includes(
-                "YOUR-WORKER"
-            )
-        ) {
-
-            errorEl.textContent =
-                "Set API_BASE in config.js to your deployed Worker URL.";
-
-            errorEl.hidden = false;
-
-            return;
-        }
-
-
-        // ----------------------------------------------------
-        // LOADING
-        // ----------------------------------------------------
-
-        searchButton.disabled = true;
-
-        searchButton.textContent =
+        button.textContent =
             "Searching…";
 
-        statusEl.textContent =
-            "Searching configured job boards…";
 
-        jobsEl.innerHTML = "";
+        $("#status").textContent =
+            "Searching live vacancies…";
 
 
         try {
 
-            /*
-             * CRITICAL FIX:
-             *
-             * Worker route is:
-             *
-             * /api/jobs/search
-             *
-             * Original frontend incorrectly used:
-             *
-             * /api/search
-             */
-
-            const requestUrl =
-                `${base}/api/jobs/search?${params.toString()}`;
-
-
-            console.log(
-                "Job Hunter request:",
-                requestUrl
-            );
-
-
-            const response =
-                await fetch(
-                    requestUrl,
-                    {
-                        method: "GET",
-
-                        headers: {
-                            Accept:
-                                "application/json"
-                        }
-                    }
-                );
-
-
             const data =
-                await response.json();
-
-
-            console.log(
-                "Job Hunter response:",
-                data
-            );
-
-
-            if (
-                !response.ok
-            ) {
-
-                throw new Error(
-                    data.error ||
-                    `Search failed (${response.status})`
-                );
-            }
-
-
-            // ------------------------------------------------
-            // RESULTS
-            // ------------------------------------------------
-
-            current =
-                Array.isArray(
-                    data.jobs
-                )
-                    ? data.jobs
-                    : [];
-
-
-            const providerNames =
-                data.providers &&
-                typeof data.providers ===
-                    "object"
-                    ? Object.entries(
-                        data.providers
-                    )
-                        .filter(
-                            ([, info]) =>
-                                info?.ok
-                        )
-                        .map(
-                            ([name]) =>
-                                name === "cvlibrary"
-                                    ? "CV-Library"
-                                    : name
-                                        .charAt(0)
-                                        .toUpperCase() +
-                                      name.slice(1)
-                        )
-                    : [];
-
-
-            statusEl.textContent =
-                `${current.length} unique job${
-                    current.length === 1
-                        ? ""
-                        : "s"
-                } found${
-                    providerNames.length
-                        ? ` via ${providerNames.join(", ")}`
-                        : ""
-                }.`;
-
-
-            render();
-
-
-            // ------------------------------------------------
-            // PROVIDER WARNINGS
-            // ------------------------------------------------
-
-            const failedProviders =
-                data.providers &&
-                typeof data.providers ===
-                    "object"
-                    ? Object.entries(
-                        data.providers
-                    ).filter(
-                        ([, info]) =>
-                            info?.ok === false
-                    )
-                    : [];
-
-
-            if (
-                failedProviders.length
-            ) {
-
-                console.warn(
-                    "Some job providers failed:",
-                    failedProviders
-                );
-            }
-
-
-        } catch (error) {
-
-            console.error(
-                "Job Hunter search failed:",
-                error
-            );
-
-
-            current = [];
-
-            jobsEl.innerHTML = "";
-
-
-            errorEl.textContent =
-                error.message ||
-                "Search failed.";
-
-            errorEl.hidden = false;
-
-            statusEl.textContent =
-                "Search failed.";
-
-
-        } finally {
-
-            searchButton.disabled = false;
-
-            searchButton.textContent =
-                "Search jobs";
-        }
-    }
-);
+                await
