@@ -1,71 +1,58 @@
 <!DOCTYPE html>
 <html lang="en-GB">
+
 <head>
+
     <meta charset="UTF-8">
 
     <meta
         name="viewport"
-        content="width=device-width, initial-scale=1"
+        content="width=device-width, initial-scale=1.0"
     >
 
     <meta
         name="description"
-        content="Search UK jobs or match your CV against live vacancies."
+        content="Search UK jobs across multiple job boards or upload your CV to find vacancies matched to your skills and experience."
     >
 
-    <title>Job Hunter</title>
+    <title>Job Hunter — Search Smarter</title>
 
     <link
         rel="stylesheet"
         href="./styles.css"
     >
 
-    <!--
-        PDF.js
-        Used ONLY in the user's browser.
-        The uploaded PDF is not sent to our server.
-    -->
-    <script
-        src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs"
-        type="module"
-    ></script>
-
-    <!--
-        Mammoth
-        Used for DOCX text extraction in-browser.
-    -->
-    <script
-        src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"
-        defer
-    ></script>
-
-    <script
-        src="./config.js"
-        defer
-    ></script>
-
-    <script
-        src="./app.js"
-        type="module"
-    ></script>
 </head>
+
 
 <body>
 
+
+<!-- =========================================================
+     HEADER
+========================================================= -->
+
 <header class="site-header">
 
-    <div class="shell header-inner">
+    <div class="header-inner">
 
         <a
-            class="brand"
             href="./"
+            class="brand"
             aria-label="Job Hunter home"
         >
-            JOB<span>HUNTER</span>
+            <span class="brand-mark">
+                JH
+            </span>
+
+            <span>
+                Job Hunter
+            </span>
         </a>
 
         <div class="privacy-badge">
-            No account. No CV storage.
+            <span>●</span>
+            Private by default
         </div>
 
     </div>
@@ -73,26 +60,35 @@
 </header>
 
 
-<main class="shell">
+
+<!-- =========================================================
+     MAIN
+========================================================= -->
+
+<main class="app-shell">
+
+
+    <!-- =====================================================
+         HERO
+    ====================================================== -->
 
     <section class="hero">
 
-        <p class="eyebrow">
+        <span class="eyebrow">
             UK JOB SEARCH
-        </p>
+        </span>
 
         <h1>
-            Find the job that
-            <span>actually fits you.</span>
+            Find the job that actually fits.
         </h1>
 
-        <p class="hero-copy">
-            Search live vacancies yourself or upload your CV
-            and we'll rank jobs against your actual skills and
-            experience.
+        <p>
+            Search multiple job boards at once or let your CV
+            find the strongest matches for you.
         </p>
 
     </section>
+
 
 
     <!-- =====================================================
@@ -101,823 +97,524 @@
 
     <nav
         class="mode-switcher"
-        aria-label="Search mode"
+        aria-label="Job search mode"
     >
 
         <button
-            id="searchModeBtn"
-            class="mode-btn active"
+            id="mode-search"
+            class="mode-button active"
             type="button"
         >
-            Search Jobs
+            <span class="mode-icon">
+                🔎
+            </span>
+
+            <span>
+                <strong>Search Jobs</strong>
+                <small>Search manually</small>
+            </span>
         </button>
 
+
         <button
-            id="cvModeBtn"
-            class="mode-btn"
+            id="mode-cv"
+            class="mode-button"
             type="button"
         >
-            Match My CV
+            <span class="mode-icon">
+                📄
+            </span>
+
+            <span>
+                <strong>Match My CV</strong>
+                <small>Find jobs for me</small>
+            </span>
         </button>
 
     </nav>
 
 
+
     <!-- =====================================================
-         NORMAL SEARCH
+         STANDARD SEARCH
     ====================================================== -->
 
     <section
-        id="searchMode"
-        class="mode-panel"
+        id="search-panel"
+        class="panel"
     >
 
-        <div class="panel">
+        <div class="panel-heading">
 
-            <div class="section-heading">
+            <div>
 
-                <div>
-                    <p class="eyebrow">
-                        LIVE SEARCH
-                    </p>
-
-                    <h2>
-                        Search vacancies
-                    </h2>
-                </div>
-
-            </div>
-
-
-            <form id="searchForm">
-
-                <div class="form-grid">
-
-                    <label class="field field-wide">
-
-                        <span>
-                            Job title, skill or keyword
-                        </span>
-
-                        <input
-                            id="q"
-                            type="search"
-                            placeholder="e.g. Azure Engineer"
-                            autocomplete="off"
-                            required
-                        >
-
-                    </label>
-
-
-                    <label class="field">
-
-                        <span>
-                            Location
-                        </span>
-
-                        <input
-                            id="location"
-                            type="text"
-                            placeholder="e.g. London"
-                            autocomplete="off"
-                        >
-
-                    </label>
-
-
-                    <label class="field">
-
-                        <span>
-                            Minimum salary
-                        </span>
-
-                        <input
-                            id="salaryMin"
-                            type="number"
-                            min="0"
-                            step="1000"
-                            placeholder="e.g. 45000"
-                        >
-
-                    </label>
-
-
-                    <label class="field">
-
-                        <span>
-                            Posted within
-                        </span>
-
-                        <select id="days">
-
-                            <option value="">
-                                Any time
-                            </option>
-
-                            <option value="1">
-                                24 hours
-                            </option>
-
-                            <option value="3">
-                                3 days
-                            </option>
-
-                            <option value="7">
-                                7 days
-                            </option>
-
-                            <option value="14">
-                                14 days
-                            </option>
-
-                            <option value="30">
-                                30 days
-                            </option>
-
-                        </select>
-
-                    </label>
-
-
-                    <label class="field">
-
-                        <span>
-                            Results per source
-                        </span>
-
-                        <select id="limit">
-
-                            <option value="10">
-                                10
-                            </option>
-
-                            <option
-                                value="20"
-                                selected
-                            >
-                                20
-                            </option>
-
-                            <option value="30">
-                                30
-                            </option>
-
-                            <option value="50">
-                                50
-                            </option>
-
-                        </select>
-
-                    </label>
-
-                </div>
-
-
-                <fieldset class="sources">
-
-                    <legend>
-                        Job sources
-                    </legend>
-
-                    <label>
-
-                        <input
-                            type="checkbox"
-                            name="source"
-                            value="reed"
-                            checked
-                        >
-
-                        Reed
-
-                    </label>
-
-
-                    <label>
-
-                        <input
-                            type="checkbox"
-                            name="source"
-                            value="adzuna"
-                            checked
-                        >
-
-                        Adzuna
-
-                    </label>
-
-                </fieldset>
-
-
-                <button
-                    id="searchBtn"
-                    class="primary-btn"
-                    type="submit"
-                >
-                    Search jobs
-                </button>
-
-            </form>
-
-        </div>
-
-    </section>
-
-
-    <!-- =====================================================
-         CV MATCH MODE
-    ====================================================== -->
-
-    <section
-        id="cvMode"
-        class="mode-panel"
-        hidden
-    >
-
-        <!-- CHOOSE INPUT -->
-
-        <div
-            id="cvStart"
-            class="panel"
-        >
-
-            <div class="section-heading">
-
-                <div>
-
-                    <p class="eyebrow">
-                        CV MATCH
-                    </p>
-
-                    <h2>
-                        How should we understand you?
-                    </h2>
-
-                    <p class="muted">
-                        Nothing you enter here is saved.
-                    </p>
-
-                </div>
-
-            </div>
-
-
-            <div class="choice-grid">
-
-                <button
-                    id="uploadChoice"
-                    class="choice-card"
-                    type="button"
-                >
-
-                    <strong>
-                        Upload my CV
-                    </strong>
-
-                    <span>
-                        PDF or DOCX
-                    </span>
-
-                    <small>
-                        Analysed locally in your browser.
-                    </small>
-
-                </button>
-
-
-                <button
-                    id="virtualChoice"
-                    class="choice-card"
-                    type="button"
-                >
-
-                    <strong>
-                        Build a virtual CV
-                    </strong>
-
-                    <span>
-                        No CV required
-                    </span>
-
-                    <small>
-                        Tell us about your experience manually.
-                    </small>
-
-                </button>
-
-            </div>
-
-        </div>
-
-
-        <!-- UPLOAD -->
-
-        <div
-            id="uploadPanel"
-            class="panel"
-            hidden
-        >
-
-            <button
-                class="back-btn"
-                id="uploadBack"
-                type="button"
-            >
-                ← Back
-            </button>
-
-
-            <p class="eyebrow">
-                UPLOAD CV
-            </p>
-
-            <h2>
-                Drop your CV in.
-            </h2>
-
-
-            <label
-                id="dropZone"
-                class="drop-zone"
-            >
-
-                <input
-                    id="cvFile"
-                    type="file"
-                    accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    hidden
-                >
-
-                <strong>
-                    Choose PDF or DOCX
-                </strong>
-
-                <span>
-                    Maximum 5 MB
+                <span class="eyebrow">
+                    SEARCH
                 </span>
 
-            </label>
+                <h2>
+                    Search UK jobs
+                </h2>
 
-
-            <div
-                id="cvProcessing"
-                class="processing"
-                hidden
-            >
-                Analysing CV…
             </div>
 
         </div>
 
 
-        <!-- VIRTUAL CV -->
-
-        <div
-            id="virtualPanel"
-            class="panel"
-            hidden
+        <form
+            id="searchForm"
+            class="search-form"
         >
-
-            <button
-                class="back-btn"
-                id="virtualBack"
-                type="button"
-            >
-                ← Back
-            </button>
-
-
-            <p class="eyebrow">
-                VIRTUAL CV
-            </p>
-
-            <h2>
-                Build your temporary profile
-            </h2>
-
-
-            <form id="virtualForm">
-
-                <div class="form-grid">
-
-                    <label class="field field-wide">
-
-                        <span>
-                            Current or most recent job title
-                        </span>
-
-                        <input
-                            id="virtualTitle"
-                            type="text"
-                            placeholder="e.g. Systems Administrator"
-                            required
-                        >
-
-                    </label>
-
-
-                    <label class="field">
-
-                        <span>
-                            Years of experience
-                        </span>
-
-                        <input
-                            id="virtualYears"
-                            type="number"
-                            min="0"
-                            max="60"
-                            step="0.5"
-                            placeholder="4"
-                        >
-
-                    </label>
-
-
-                    <label class="field">
-
-                        <span>
-                            Seniority
-                        </span>
-
-                        <select id="virtualSeniority">
-
-                            <option value="junior">
-                                Junior
-                            </option>
-
-                            <option
-                                value="mid"
-                                selected
-                            >
-                                Mid-level
-                            </option>
-
-                            <option value="senior">
-                                Senior
-                            </option>
-
-                            <option value="lead">
-                                Lead
-                            </option>
-
-                            <option value="manager">
-                                Manager
-                            </option>
-
-                        </select>
-
-                    </label>
-
-
-                    <label class="field field-wide">
-
-                        <span>
-                            Skills and technologies
-                        </span>
-
-                        <textarea
-                            id="virtualSkills"
-                            rows="4"
-                            placeholder="Azure, Intune, Entra ID, Microsoft 365, PowerShell..."
-                            required
-                        ></textarea>
-
-                    </label>
-
-
-                    <label class="field field-wide">
-
-                        <span>
-                            Previous job titles
-                        </span>
-
-                        <input
-                            id="virtualPreviousRoles"
-                            type="text"
-                            placeholder="Helpdesk Engineer, Systems Administrator"
-                        >
-
-                    </label>
-
-
-                    <label class="field field-wide">
-
-                        <span>
-                            Certifications
-                        </span>
-
-                        <input
-                            id="virtualCerts"
-                            type="text"
-                            placeholder="AZ-900, MD-102, CCNA..."
-                        >
-
-                    </label>
-
-                </div>
-
-
-                <button
-                    class="primary-btn"
-                    type="submit"
-                >
-                    Build my profile
-                </button>
-
-            </form>
-
-        </div>
-
-
-        <!-- PROFILE REVIEW -->
-
-        <div
-            id="profilePanel"
-            class="panel"
-            hidden
-        >
-
-            <div class="profile-header">
-
-                <div>
-
-                    <p class="eyebrow">
-                        YOUR TEMPORARY PROFILE
-                    </p>
-
-                    <h2>
-                        Is this you?
-                    </h2>
-
-                    <p class="muted">
-                        Edit anything we misunderstood before searching.
-                    </p>
-
-                </div>
-
-                <div class="local-only">
-                    Not saved
-                </div>
-
-            </div>
-
-
-            <div class="profile-grid">
-
-                <label class="field">
-
-                    <span>
-                        Primary role
-                    </span>
-
-                    <input
-                        id="profilePrimaryRole"
-                        type="text"
-                    >
-
-                </label>
-
-
-                <label class="field">
-
-                    <span>
-                        Experience
-                    </span>
-
-                    <input
-                        id="profileYears"
-                        type="number"
-                        min="0"
-                        max="60"
-                        step="0.5"
-                    >
-
-                </label>
-
-
-                <label class="field">
-
-                    <span>
-                        Seniority
-                    </span>
-
-                    <select id="profileSeniority">
-
-                        <option value="junior">
-                            Junior
-                        </option>
-
-                        <option value="mid">
-                            Mid-level
-                        </option>
-
-                        <option value="senior">
-                            Senior
-                        </option>
-
-                        <option value="lead">
-                            Lead
-                        </option>
-
-                        <option value="manager">
-                            Manager
-                        </option>
-
-                    </select>
-
-                </label>
-
-
-                <label class="field field-wide">
-
-                    <span>
-                        Other relevant roles
-                    </span>
-
-                    <input
-                        id="profileRoles"
-                        type="text"
-                    >
-
-                </label>
-
-
-                <label class="field field-wide">
-
-                    <span>
-                        Skills
-                    </span>
-
-                    <textarea
-                        id="profileSkills"
-                        rows="5"
-                    ></textarea>
-
-                </label>
-
-
-                <label class="field field-wide">
-
-                    <span>
-                        Certifications
-                    </span>
-
-                    <input
-                        id="profileCerts"
-                        type="text"
-                    >
-
-                </label>
-
-            </div>
-
-
-            <hr>
-
-
-            <h3>
-                Search preferences
-            </h3>
-
 
             <div class="form-grid">
 
-                <label class="field">
 
-                    <span>
-                        Location
-                    </span>
+                <!-- QUERY -->
+
+                <div class="field field-large">
+
+                    <label for="q">
+                        Job title, skill or keyword
+                    </label>
 
                     <input
-                        id="cvLocation"
-                        type="text"
-                        placeholder="e.g. London"
+                        id="q"
+                        name="q"
+                        type="search"
+                        placeholder="e.g. Cloud Engineer, Azure, Chef..."
+                        autocomplete="off"
+                        required
                     >
 
-                </label>
+                </div>
 
 
-                <label class="field">
 
-                    <span>
-                        Minimum salary
-                    </span>
+                <!-- LOCATION -->
+
+                <div class="field">
+
+                    <label for="location">
+                        Location
+                    </label>
 
                     <input
-                        id="cvSalary"
+                        id="location"
+                        name="location"
+                        type="text"
+                        placeholder="e.g. London"
+                        autocomplete="address-level2"
+                    >
+
+                </div>
+
+
+
+                <!-- SALARY -->
+
+                <div class="field">
+
+                    <label for="salaryMin">
+                        Minimum salary
+                    </label>
+
+                    <input
+                        id="salaryMin"
+                        name="salaryMin"
                         type="number"
                         min="0"
+                        max="1000000"
                         step="1000"
                         placeholder="e.g. 45000"
                     >
 
-                </label>
+                </div>
 
 
-                <label class="field">
 
-                    <span>
+                <!-- POSTED -->
+
+                <div class="field">
+
+                    <label for="days">
                         Posted within
-                    </span>
+                    </label>
 
-                    <select id="cvDays">
-
-                        <option value="30">
-                            30 days
-                        </option>
-
-                        <option value="14">
-                            14 days
-                        </option>
-
-                        <option
-                            value="7"
-                            selected
-                        >
-                            7 days
-                        </option>
-
-                        <option value="3">
-                            3 days
-                        </option>
-
-                        <option value="1">
-                            24 hours
-                        </option>
+                    <select
+                        id="days"
+                        name="days"
+                    >
 
                         <option value="">
                             Any time
                         </option>
 
+                        <option value="1">
+                            Last 24 hours
+                        </option>
+
+                        <option value="3">
+                            Last 3 days
+                        </option>
+
+                        <option value="7">
+                            Last 7 days
+                        </option>
+
+                        <option value="14">
+                            Last 14 days
+                        </option>
+
+                        <option value="30">
+                            Last 30 days
+                        </option>
+
                     </select>
 
-                </label>
+                </div>
+
+
+
+                <!-- RESULTS -->
+
+                <div class="field">
+
+                    <label for="limit">
+                        Results per source
+                    </label>
+
+                    <select
+                        id="limit"
+                        name="limit"
+                    >
+
+                        <option value="10">
+                            10
+                        </option>
+
+                        <option
+                            value="20"
+                            selected
+                        >
+                            20
+                        </option>
+
+                        <option value="30">
+                            30
+                        </option>
+
+                        <option value="50">
+                            50
+                        </option>
+
+                    </select>
+
+                </div>
 
             </div>
 
 
-            <div class="profile-actions">
+
+            <!-- PROVIDERS -->
+
+            <fieldset class="providers">
+
+                <legend>
+                    Job boards
+                </legend>
+
+
+                <label class="provider-option">
+
+                    <input
+                        type="checkbox"
+                        name="source"
+                        value="reed"
+                        checked
+                    >
+
+                    <span>
+                        Reed
+                    </span>
+
+                </label>
+
+
+                <label class="provider-option">
+
+                    <input
+                        type="checkbox"
+                        name="source"
+                        value="adzuna"
+                        checked
+                    >
+
+                    <span>
+                        Adzuna
+                    </span>
+
+                </label>
+
+            </fieldset>
+
+
+
+            <button
+                id="searchBtn"
+                class="primary-button"
+                type="submit"
+            >
+                Search jobs
+            </button>
+
+        </form>
+
+    </section>
+
+
+
+    <!-- =====================================================
+         CV MATCH
+    ====================================================== -->
+
+    <section
+        id="cv-panel"
+        class="panel"
+        hidden
+    >
+
+        <div class="panel-heading">
+
+            <div>
+
+                <span class="eyebrow">
+                    CV MATCH
+                </span>
+
+                <h2>
+                    Let your CV find the jobs.
+                </h2>
+
+                <p>
+                    We'll analyse your experience, skills and
+                    certifications and use them to find relevant
+                    vacancies.
+                </p>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- PRIVACY -->
+
+        <div class="privacy-callout">
+
+            <div class="privacy-icon">
+                🔒
+            </div>
+
+            <div>
+
+                <strong>
+                    Your CV isn't stored.
+                </strong>
+
+                <p>
+                    CV analysis happens for this session only.
+                    We don't create an account, save your CV or
+                    build a candidate database.
+                </p>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- CV CHOICE -->
+
+        <div class="cv-choice-grid">
+
+
+            <!-- UPLOAD -->
+
+            <div class="cv-choice-card">
+
+                <div class="choice-icon">
+                    📄
+                </div>
+
+                <h3>
+                    Upload your CV
+                </h3>
+
+                <p>
+                    Already have a CV? Upload it and we'll build
+                    your temporary job profile automatically.
+                </p>
+
+
+                <div
+                    id="cv-drop-zone"
+                    class="cv-drop-zone"
+                >
+
+                    <input
+                        id="cv-file"
+                        type="file"
+                        accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                    >
+
+                    <label for="cv-file">
+
+                        <span class="upload-icon">
+                            ↑
+                        </span>
+
+                        <strong>
+                            Choose CV
+                        </strong>
+
+                        <span>
+                            or drag it here
+                        </span>
+
+                        <small>
+                            PDF, DOCX or TXT • Max 5 MB
+                        </small>
+
+                    </label>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- VIRTUAL CV -->
+
+            <div class="cv-choice-card">
+
+                <div class="choice-icon">
+                    👤
+                </div>
+
+                <h3>
+                    Build a virtual CV
+                </h3>
+
+                <p>
+                    No CV? Build a temporary profile by adding
+                    your roles, skills, certifications and
+                    experience.
+                </p>
 
                 <button
-                    id="restartCvBtn"
-                    class="secondary-btn"
+                    id="build-virtual-cv"
+                    class="secondary-button"
                     type="button"
                 >
-                    Start again
-                </button>
-
-                <button
-                    id="findMatchesBtn"
-                    class="primary-btn"
-                    type="button"
-                >
-                    Find my matches
+                    Build my profile
                 </button>
 
             </div>
 
         </div>
 
+
+
+        <!-- CV STATUS -->
+
+        <div
+            id="cv-status"
+            class="cv-status"
+            aria-live="polite"
+        >
+            Upload a CV or build a temporary profile to begin.
+        </div>
+
+
+
+        <!-- CANDIDATE PROFILE -->
+
+        <section
+            id="candidate-profile"
+            class="candidate-profile"
+            hidden
+        >
+        </section>
+
+
+
+        <!-- CLEAR CV -->
+
+        <div class="cv-actions">
+
+            <button
+                id="clear-cv"
+                class="text-button"
+                type="button"
+            >
+                Clear CV / profile
+            </button>
+
+        </div>
+
+
     </section>
 
 
+
     <!-- =====================================================
-         STATUS
+         GLOBAL STATUS / ERROR
     ====================================================== -->
 
     <div
         id="error"
-        class="error"
+        class="error-message"
         role="alert"
         hidden
-    ></div>
-
-
-    <section
-        id="resultsSection"
-        class="results-section"
     >
+    </div>
 
-        <div class="results-toolbar">
+
+    <div
+        id="status"
+        class="status-message"
+        aria-live="polite"
+    >
+    </div>
+
+
+
+    <!-- =====================================================
+         RESULTS HEADER
+    ====================================================== -->
+
+    <section class="results-section">
+
+        <div class="results-heading">
 
             <div>
 
-                <p class="eyebrow">
+                <span class="eyebrow">
                     RESULTS
-                </p>
+                </span>
 
-                <p id="status">
-                    Search for a job to get started.
-                </p>
+                <h2>
+                    Jobs
+                </h2>
 
             </div>
 
 
-            <label class="sort-field">
+            <div class="sort-control">
 
-                Sort
+                <label for="sort">
+                    Sort
+                </label>
 
                 <select id="sort">
 
@@ -926,43 +623,137 @@
                     </option>
 
                     <option value="salary">
-                        Salary
+                        Salary: high to low
                     </option>
 
                     <option value="title">
                         Job title
                     </option>
 
-                    <option value="match">
-                        CV match
-                    </option>
-
                 </select>
 
-            </label>
+            </div>
 
         </div>
 
 
-        <div id="jobs"></div>
+
+        <!--
+            Standard search and CV match can both use this
+            container as a fallback.
+        -->
+
+        <div
+            id="jobs"
+            class="jobs-grid"
+        >
+
+            <div class="empty">
+
+                <h3>
+                    Start your search
+                </h3>
+
+                <p>
+                    Search manually or upload your CV to find
+                    matching vacancies.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <!--
+            Dedicated CV results container.
+
+            app.js prefers this when CV matching.
+        -->
+
+        <div
+            id="cv-results"
+            class="jobs-grid cv-results"
+        >
+        </div>
 
     </section>
+
 
 </main>
 
 
-<footer class="footer">
 
-    <div class="shell">
+<!-- =========================================================
+     FOOTER
+========================================================= -->
 
-        <p>
-            CV matching measures alignment between your profile
-            and a vacancy. It does not predict hiring outcomes.
-        </p>
+<footer class="site-footer">
+
+    <div>
+
+        <strong>
+            Job Hunter
+        </strong>
+
+        <span>
+            Search smarter. Apply better.
+        </span>
 
     </div>
 
+    <p>
+        CV match percentages represent CV-to-vacancy alignment,
+        not the likelihood of being hired.
+    </p>
+
 </footer>
 
+
+
+<!-- =========================================================
+     PDF.JS
+========================================================= -->
+
+<script
+    src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
+    integrity="sha512-qA1M3RCnR8GJJ9QZ3PH3Qq6AJGz4rVgKxPqqI9rGsQYBVvXuU+g0BMVkQHMuXrfJsXLG4oF3n7BQHI4U3hZ6OA=="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+></script>
+
+
+<script>
+    if (window.pdfjsLib) {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+            "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    }
+</script>
+
+
+
+<!-- =========================================================
+     MAMMOTH.JS — DOCX EXTRACTION
+========================================================= -->
+
+<script
+    src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.7.2/mammoth.browser.min.js"
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+></script>
+
+
+
+<!-- =========================================================
+     JOB HUNTER
+     
+     CONFIG MUST LOAD BEFORE APP.JS.
+========================================================= -->
+
+<script src="./config.js"></script>
+
+<script src="./app.js"></script>
+
+
 </body>
+
 </html>
